@@ -1,0 +1,116 @@
+{
+  "n": 36,
+  "accuracy": 0.6666666666666666,
+  "target": 0.75,
+  "labels": [
+    "healthy",
+    "dryness",
+    "yellowing",
+    "weak_damage",
+    "unknown"
+  ],
+  "confusion_matrix": [
+    [
+      9,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      6,
+      2,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      9,
+      0,
+      0
+    ],
+    [
+      4,
+      0,
+      0,
+      0,
+      5
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "threshold_sweep": [
+    {
+      "threshold": 0.3,
+      "coverage": 0.861,
+      "accuracy": 0.774
+    },
+    {
+      "threshold": 0.35,
+      "coverage": 0.861,
+      "accuracy": 0.774
+    },
+    {
+      "threshold": 0.4,
+      "coverage": 0.833,
+      "accuracy": 0.767
+    },
+    {
+      "threshold": 0.45,
+      "coverage": 0.833,
+      "accuracy": 0.767
+    },
+    {
+      "threshold": 0.5,
+      "coverage": 0.778,
+      "accuracy": 0.821
+    },
+    {
+      "threshold": 0.55,
+      "coverage": 0.639,
+      "accuracy": 0.783
+    },
+    {
+      "threshold": 0.6,
+      "coverage": 0.611,
+      "accuracy": 0.818
+    },
+    {
+      "threshold": 0.65,
+      "coverage": 0.556,
+      "accuracy": 0.9
+    },
+    {
+      "threshold": 0.7,
+      "coverage": 0.528,
+      "accuracy": 0.947
+    },
+    {
+      "threshold": 0.75,
+      "coverage": 0.528,
+      "accuracy": 0.947
+    },
+    {
+      "threshold": 0.8,
+      "coverage": 0.389,
+      "accuracy": 0.929
+    },
+    {
+      "threshold": 0.85,
+      "coverage": 0.278,
+      "accuracy": 0.9
+    },
+    {
+      "threshold": 0.9,
+      "coverage": 0.25,
+      "accuracy": 1.0
+    }
+  ]
+}

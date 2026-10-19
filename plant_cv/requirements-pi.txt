@@ -1,0 +1,4 @@
+# Raspberry Pi 4 (64-bit Raspberry Pi OS). picamera2 comes from apt: sudo apt install python3-picamera2
+opencv-python-headless
+numpy
+onnxruntime

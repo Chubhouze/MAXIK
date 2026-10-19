@@ -1,0 +1,11 @@
+# Training PC (Windows, GTX 1660 Ti). Install torch from the CUDA index:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+opencv-python
+numpy
+pillow
+onnx
+onnxscript
+onnxruntime
+scikit-learn
+matplotlib
+tqdm

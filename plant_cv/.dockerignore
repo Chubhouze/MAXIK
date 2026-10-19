@@ -1,0 +1,9 @@
+.venv
+**/__pycache__
+*.pyc
+*.pt
+data
+reports
+outbox
+models_synthetic/plant_gate.onnx*
+models_synthetic/mobilenet_v3_large_best.pt

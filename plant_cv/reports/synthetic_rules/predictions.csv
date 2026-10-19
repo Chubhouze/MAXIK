@@ -1,0 +1,37 @@
+file,true,pred,conf,reasons
+data\split_synthetic\test\dryness\syn011_dryness.jpg,dryness,dryness,0.5,yellow leaf area 50%; brown/dry tissue 93%
+data\split_synthetic\test\dryness\syn016_dryness.jpg,dryness,dryness,0.5,yellow leaf area 42%; brown/dry tissue 42%
+data\split_synthetic\test\dryness\syn020_dryness.jpg,dryness,dryness,0.5,yellow leaf area 43%; brown/dry tissue 27%
+data\split_synthetic\test\dryness\syn023_dryness.jpg,dryness,yellowing,0.4646,yellow leaf area 21%; brown/dry tissue 12%
+data\split_synthetic\test\dryness\syn033_dryness.jpg,dryness,healthy,0.624,
+data\split_synthetic\test\dryness\syn038_dryness.jpg,dryness,dryness,0.5,yellow leaf area 68%; brown/dry tissue 89%
+data\split_synthetic\test\dryness\syn054_dryness.jpg,dryness,dryness,0.5,yellow leaf area 52%; brown/dry tissue 30%
+data\split_synthetic\test\dryness\syn055_dryness.jpg,dryness,yellowing,0.8808,yellow leaf area 55%
+data\split_synthetic\test\dryness\syn058_dryness.jpg,dryness,dryness,0.3921,yellow leaf area 17%; brown/dry tissue 15%
+data\split_synthetic\test\healthy\syn000_healthy.jpg,healthy,healthy,0.7996,
+data\split_synthetic\test\healthy\syn016_healthy.jpg,healthy,healthy,0.7976,
+data\split_synthetic\test\healthy\syn019_healthy.jpg,healthy,healthy,0.8181,
+data\split_synthetic\test\healthy\syn031_healthy.jpg,healthy,healthy,0.8235,
+data\split_synthetic\test\healthy\syn033_healthy.jpg,healthy,healthy,0.7791,
+data\split_synthetic\test\healthy\syn043_healthy.jpg,healthy,healthy,0.7863,
+data\split_synthetic\test\healthy\syn048_healthy.jpg,healthy,healthy,0.7796,
+data\split_synthetic\test\healthy\syn049_healthy.jpg,healthy,healthy,0.8167,
+data\split_synthetic\test\healthy\syn058_healthy.jpg,healthy,healthy,0.8174,
+data\split_synthetic\test\weak_damage\syn006_weak_damage.jpg,weak_damage,unknown,0.0,plant not found in frame
+data\split_synthetic\test\weak_damage\syn011_weak_damage.jpg,weak_damage,healthy,0.4988,
+data\split_synthetic\test\weak_damage\syn018_weak_damage.jpg,weak_damage,healthy,0.5593,
+data\split_synthetic\test\weak_damage\syn019_weak_damage.jpg,weak_damage,unknown,0.0,plant not found in frame
+data\split_synthetic\test\weak_damage\syn022_weak_damage.jpg,weak_damage,healthy,0.6293,
+data\split_synthetic\test\weak_damage\syn039_weak_damage.jpg,weak_damage,unknown,0.0,plant not found in frame
+data\split_synthetic\test\weak_damage\syn043_weak_damage.jpg,weak_damage,healthy,0.6899,
+data\split_synthetic\test\weak_damage\syn055_weak_damage.jpg,weak_damage,unknown,0.0,plant not found in frame
+data\split_synthetic\test\weak_damage\syn057_weak_damage.jpg,weak_damage,unknown,0.0,plant not found in frame
+data\split_synthetic\test\yellowing\syn006_yellowing.jpg,yellowing,yellowing,0.9523,yellow leaf area 70%
+data\split_synthetic\test\yellowing\syn009_yellowing.jpg,yellowing,yellowing,0.9419,yellow leaf area 65%
+data\split_synthetic\test\yellowing\syn040_yellowing.jpg,yellowing,yellowing,0.9509,yellow leaf area 51%
+data\split_synthetic\test\yellowing\syn041_yellowing.jpg,yellowing,yellowing,0.9468,yellow leaf area 62%
+data\split_synthetic\test\yellowing\syn043_yellowing.jpg,yellowing,yellowing,0.9462,yellow leaf area 67%
+data\split_synthetic\test\yellowing\syn044_yellowing.jpg,yellowing,yellowing,0.9498,yellow leaf area 57%
+data\split_synthetic\test\yellowing\syn047_yellowing.jpg,yellowing,yellowing,0.9527,yellow leaf area 81%
+data\split_synthetic\test\yellowing\syn049_yellowing.jpg,yellowing,yellowing,0.9472,yellow leaf area 70%
+data\split_synthetic\test\yellowing\syn050_yellowing.jpg,yellowing,yellowing,0.9522,yellow leaf area 71%

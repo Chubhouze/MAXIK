@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "maxik-webapp",
+      "runtimeExecutable": "plant_cv/.venv/Scripts/python.exe",
+      "runtimeArgs": ["plant_cv/webapp.py"],
+      "port": 5055
+    }
+  ]
+}

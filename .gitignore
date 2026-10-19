@@ -1,0 +1,24 @@
+# Personal application documents (budget, forms, tax info) - not for a repository
+forms and docs/
+
+# Datasets (gigabytes; re-created by the scripts in plant_cv/scripts) and environments
+data/
+.venv/
+__pycache__/
+*.pyc
+
+# Training checkpoints, backups, logs, scratch
+*.pt
+**/backup_*/
+plant_cv/models_*/*.log
+plant_cv/models_*/*.err
+plant_cv/models_synthetic/plant_gate.onnx
+plant_cv/models_synthetic/plant_gate.onnx.data
+plant_cv/categories.txt
+plant_cv/reports/demo/
+plant_cv/reports/_tmp.json
+
+# Runtime state: inspection history, queued photos
+*.db
+outbox/
+.claude/settings.local.json

@@ -1,0 +1,14 @@
+{
+  "classes": [
+    "not_plant",
+    "plant"
+  ],
+  "img_size": 224,
+  "temperature": 0.30000001192092896,
+  "val_acc": 0.9998146295547485,
+  "val_precision": 1.0,
+  "val_recall": 0.999695400548279,
+  "test_acc": 0.9994743466377258,
+  "test_precision": 1.0,
+  "test_recall": 0.99932423300446
+}

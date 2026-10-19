@@ -1,0 +1,12 @@
+{
+  "classes": [
+    "dryness",
+    "healthy",
+    "weak_damage",
+    "yellowing"
+  ],
+  "img_size": 224,
+  "arch": "mobilenet_v3_large",
+  "temperature": 0.550000011920929,
+  "val_acc": 0.8055555820465088
+}
