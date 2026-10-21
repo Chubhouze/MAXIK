@@ -22,3 +22,6 @@ plant_cv/reports/_tmp.json
 *.db
 outbox/
 .claude/settings.local.json
+
+# Downloaded installer packages
+*.whl

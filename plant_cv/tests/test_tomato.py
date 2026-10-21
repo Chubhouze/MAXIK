@@ -193,6 +193,15 @@ class ApiTests(unittest.TestCase):
         self.assertIsNone(body["inspectionId"])
         self.assertEqual(self.client.get("/point/test-point").status_code, 404)
 
+    @unittest.skipUnless((ROOT / "samples" / "healthy.jpg").exists(), "samples folder not present")
+    def test_bundled_samples_work_and_nothing_else_is_served(self):
+        ok = self.client.get("/tomato/sample/healthy.jpg")
+        self.assertEqual(ok.status_code, 200)
+        self.assertIn("Healthy", ok.get_data(as_text=True))
+        self.assertIn("/tomato/sample/early_blight.jpg", self.client.get("/tomato").get_data(as_text=True))
+        for bad in ("nope.jpg", "..%2Fwebapp.py", "..%5C..%5Cwebapp.py", "healthy.jpg%00"):
+            self.assertEqual(self.client.get(f"/tomato/sample/{bad}").status_code, 404, bad)
+
     def test_api_token_is_enforced_when_set(self):
         os.environ["MAXIK_API_TOKEN"] = "secret"
         try:

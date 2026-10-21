@@ -1,0 +1,4 @@
+# The launchers break if their line endings are wrong, so pin them regardless of who clones or downloads the zip.
+*.bat text eol=crlf
+*.sh  text eol=lf
+*.onnx binary

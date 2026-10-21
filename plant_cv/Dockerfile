@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements-server.txt
 
 COPY maxik_cv ./maxik_cv
 COPY webapp.py dashboard_ui.py ./
+COPY samples ./samples
 COPY models_synthetic/plant_gate_trained.onnx models_synthetic/plant_health.onnx models_synthetic/plant_health.json ./models_synthetic/
 COPY models_tomato/tomato_health.onnx models_tomato/tomato_health.json ./models_tomato/
 

@@ -39,6 +39,16 @@ tomato_inspector = TomatoInspector(PlantDetector.from_model_path(GATE_MODEL_PATH
                                     health_classifier=tomato_health_classifier)
 # Inspection history. In a container the file system is lost on redeploy unless this path is on a volume.
 history = TomatoHistory(os.environ.get("MAXIK_DB_PATH", BASE_DIR / "inspections.db"))
+# Bundled sample photos (samples/*.jpg): label shown on the page -> file. The folder may be deleted.
+SAMPLE_FILES = {p.name: p for p in sorted((BASE_DIR / "samples").glob("*.jpg"))}
+SAMPLES = [(n[:-4].replace("_", " ").capitalize(), n) for n in SAMPLE_FILES]
+
+
+@app.context_processor
+def _inject_samples():
+    return {"samples": SAMPLES}
+
+
 TOMATO_MODEL_TEST_ACC = (json.loads(TOMATO_HEALTH_MODEL_PATH.with_suffix(".json").read_text(encoding="utf8")).get("test_acc", 0.0)
                          if TOMATO_HEALTH_MODEL_PATH.exists() else 0.0)
 
@@ -201,6 +211,10 @@ TOMATO_PAGE = """
   .trend-worsening { color: var(--red); } .trend-improving { color: var(--green); } .trend-stable { color: var(--muted); }
   .warn-box { background: #fff8e6; border: 1px solid #f0deab; border-radius: 10px; padding: 10px 14px; margin-top: 14px;
               font-size: 0.88em; line-height: 1.5; color: #6b5300; }
+  .sample-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .sample { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink);
+            text-decoration: none; font-size: 0.9em; }
+  .sample:hover { border-color: var(--ink); }
   .metric-label.wide { width: 190px; }
   .bar-fill.damage { background: #c62828; }
   .ctx { margin-top: 14px; } .ctx summary { color: var(--ink); }
@@ -241,6 +255,13 @@ TOMATO_PAGE = """
       <button type=submit>Analyze photo</button>
     </form>
   </div>
+
+  {% if samples %}
+  <div class="card">
+    <div class="section-label" style="margin-top:0">No photo at hand? Try a sample</div>
+    <div class="sample-row">{% for label, name in samples %}<a class="sample" href="/tomato/sample/{{ name|urlencode }}">{{ label }}</a>{% endfor %}</div>
+  </div>
+  {% endif %}
 
   {% if result %}
   <div class="card">
@@ -448,13 +469,26 @@ def tomato():
     img = cv2.imdecode(np.frombuffer(request.files["photo"].read(), np.uint8), cv2.IMREAD_COLOR)
     if img is None:
         return render_template_string(TOMATO_PAGE, result=None)
+    return _render_tomato(img, point, sensors)
 
+
+def _render_tomato(img: np.ndarray, point: str | None, sensors: dict):
     analysis, _ = analyze(tomato_inspector, history, img, point, sensors)
     result = analysis.to_dict()
     return render_template_string(
         TOMATO_PAGE, result=result, orig_b64=_to_b64(img), overlay_b64=_lesion_overlay_b64(img, analysis.lesion),
         result_json=json.dumps(result, indent=2, ensure_ascii=False), model_test_acc=TOMATO_MODEL_TEST_ACC,
     )
+
+
+@app.route("/tomato/sample/<name>")
+def tomato_sample(name):
+    """Analyse one of the bundled sample photos. Only files found in samples/ are served (no path input)."""
+    path = SAMPLE_FILES.get(name)
+    img = cv2.imread(str(path)) if path else None
+    if img is None:
+        return "unknown sample", 404
+    return _render_tomato(img, None, {})
 
 
 @app.route("/dashboard")
@@ -513,4 +547,16 @@ def api_tomato():
 
 if __name__ == "__main__":
     # MAXIK_HOST=0.0.0.0 lets a robot on the same Wi-Fi/LAN reach the server; default stays local-only.
-    app.run(host=os.environ.get("MAXIK_HOST", "127.0.0.1"), port=5055, debug=False)
+    # MAXIK_PORT changes the port (default 5055); MAXIK_OPEN_BROWSER=1 opens the page (set by start.bat/start.sh).
+    host, port = os.environ.get("MAXIK_HOST", "127.0.0.1"), int(os.environ.get("MAXIK_PORT", "5055"))
+    url = f"http://{'127.0.0.1' if host in ('0.0.0.0', '') else host}:{port}/tomato"
+    print(f"\nM.A.X.I.K. is running: {url}\nPress Ctrl+C (or close this window) to stop.\n", flush=True)
+    if os.environ.get("MAXIK_OPEN_BROWSER"):
+        import threading
+        import webbrowser
+        threading.Timer(1.5, webbrowser.open, [url]).start()
+    try:
+        from waitress import serve  # production-grade server, installed with requirements-server.txt
+        serve(app, host=host, port=port, threads=4)
+    except ImportError:
+        app.run(host=host, port=port, debug=False)
