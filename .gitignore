@@ -16,7 +16,8 @@ plant_cv/models_synthetic/plant_gate.onnx
 plant_cv/models_synthetic/plant_gate.onnx.data
 plant_cv/categories.txt
 plant_cv/reports/demo/
-plant_cv/reports/_tmp.json
+plant_cv/reports/_*
+plant_cv/models_tomato_field/run1_*/
 
 # Runtime state: inspection history, queued photos
 *.db

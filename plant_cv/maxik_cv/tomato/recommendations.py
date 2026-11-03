@@ -110,7 +110,14 @@ def build_summary(r: AnalysisResult) -> str:
         return r.message
     head = r.status_label + (f" ({r.condition_confidence:.0%} model confidence)" if r.condition_confidence else "")
     parts = [head + "."]
-    if r.affected_fraction is not None:
+    if r.mode == "whole_plant" and r.leaves:
+        sick = sum(1 for l in r.leaves if l["condition"] not in ("TOMATO_HEALTHY", "TOMATO_UNCERTAIN"))
+        parts.append(f"Whole-plant analysis: {len(r.leaves)} leaves analysed, {sick} show possible problems.")
+        if r.affected_fraction is not None:
+            sev = f" Severity: {r.severity.value.lower()} (the worse of visible damage and share of affected leaves)." \
+                if r.severity != Severity.UNKNOWN else ""
+            parts.append(f"Visibly discoloured area: about {r.affected_fraction:.0%} of the leaf area.{sev}")
+    elif r.affected_fraction is not None:
         if r.severity != Severity.UNKNOWN:
             parts.append(f"About {r.affected_fraction:.0%} of the visible leaf area is damaged "
                          f"({r.severity.value.lower()} severity).")

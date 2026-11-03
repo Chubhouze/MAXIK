@@ -1,0 +1,37 @@
+{
+  "classes": [
+    "Apple",
+    "Blueberry",
+    "Cashew",
+    "Cassava",
+    "Cherry",
+    "Corn",
+    "Grape",
+    "Peach",
+    "Pepper",
+    "Potato",
+    "Raspberry",
+    "Soybean",
+    "Squash",
+    "Strawberry",
+    "Tomato"
+  ],
+  "img_size": 224,
+  "temperature": 0.699999988079071,
+  "test": {
+    "lab": {
+      "acc": 1.0,
+      "n": 2050
+    },
+    "field_leaf": {
+      "acc": 0.8517699241638184,
+      "n": 452
+    },
+    "field_photo": {
+      "acc": 0.9991793036460876,
+      "n": 2437
+    }
+  },
+  "field_tomato_vs_other": 0.9871928095817566,
+  "trained_on": "PlantVillage + PlantDoc (CC BY 4.0) + CCMT (CC BY 4.0)"
+}

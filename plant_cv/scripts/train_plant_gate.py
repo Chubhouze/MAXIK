@@ -29,9 +29,10 @@ def loaders(data: Path, size: int, bs: int):
         transforms.ToTensor(),
         transforms.Normalize(MEAN, STD),
     ])
+    # Whole frame, not a centre crop: "is there a plant anywhere in the frame?" needs the edges. Must match
+    # maxik_cv.preprocess.whole_frame_input, which the app uses.
     eval_tf = transforms.Compose([
-        transforms.Resize(int(size * 1.14)),
-        transforms.CenterCrop(size),
+        transforms.Resize((size, size)),
         transforms.ToTensor(),
         transforms.Normalize(MEAN, STD),
     ])

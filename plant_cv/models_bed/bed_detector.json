@@ -1,0 +1,31 @@
+{
+  "classes": [
+    "crop",
+    "weed"
+  ],
+  "min_size": 720,
+  "max_size": 1280,
+  "score_threshold": 0.5,
+  "max_detections": 300,
+  "val": {
+    "ap50": 0.7747801985712222,
+    "ap50_per_class": {
+      "1": 0.9114603639802796,
+      "2": 0.6381000331621646
+    },
+    "recall": 0.673921200750469,
+    "precision": 0.7522513089005236,
+    "gt": 5330
+  },
+  "test": {
+    "ap50": 0.773999626309973,
+    "ap50_per_class": {
+      "1": 0.9225195044142438,
+      "2": 0.6254797482057022
+    },
+    "recall": 0.7313967369677676,
+    "precision": 0.779308882764469,
+    "gt": 5026
+  },
+  "trained_on": "CropAndWeed, 74 species mapped to crop/weed (non-commercial licence)"
+}

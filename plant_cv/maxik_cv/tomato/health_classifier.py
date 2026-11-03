@@ -13,14 +13,11 @@ import json
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-import cv2
 import numpy as np
 
+from ..preprocess import center_crop_input
 from .class_mapping import DATASET_LABEL_TO_CONDITION
 from .schema import Condition, HealthPrediction
-
-IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 
 class TomatoHealthClassifier(ABC):
@@ -56,19 +53,8 @@ class OnnxTomatoHealthClassifier(TomatoHealthClassifier):
         self.session = ort.InferenceSession(str(model_path), opts, providers=["CPUExecutionProvider"])
         self.input_name = self.session.get_inputs()[0].name
 
-    def _preprocess(self, bgr: np.ndarray) -> np.ndarray:
-        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        h, w = rgb.shape[:2]
-        s = int(self.size * 1.14) / min(h, w)
-        rgb = cv2.resize(rgb, (round(w * s), round(h * s)), interpolation=cv2.INTER_AREA)
-        h, w = rgb.shape[:2]
-        y0, x0 = (h - self.size) // 2, (w - self.size) // 2
-        rgb = rgb[y0:y0 + self.size, x0:x0 + self.size]
-        x = (rgb.astype(np.float32) / 255.0 - IMAGENET_MEAN) / IMAGENET_STD
-        return x.transpose(2, 0, 1)[None].astype(np.float32)
-
     def classify(self, bgr: np.ndarray) -> HealthPrediction:
-        x = self._preprocess(bgr)
+        x = center_crop_input(bgr, self.size)
         logits = self.session.run(None, {self.input_name: x})[0][0] / self.temperature
         probs = np.exp(logits - logits.max())
         probs /= probs.sum()

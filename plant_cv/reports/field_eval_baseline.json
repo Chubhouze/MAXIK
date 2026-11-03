@@ -1,0 +1,108 @@
+{
+  "model": "tomato_health.onnx",
+  "whole_plant": false,
+  "leaves": {
+    "n": 192,
+    "exact": 0.20833333333333334,
+    "binary": 0.796875,
+    "per_class": {
+      "TOMATO_LEAF_MOLD": [
+        4,
+        16
+      ],
+      "TOMATO_HEALTHY": [
+        0,
+        27
+      ],
+      "TOMATO_BACTERIAL_SPOT": [
+        1,
+        14
+      ],
+      "TOMATO_MOSAIC_VIRUS": [
+        0,
+        36
+      ],
+      "TOMATO_SEPTORIA_LEAF_SPOT": [
+        2,
+        24
+      ],
+      "TOMATO_LATE_BLIGHT": [
+        8,
+        14
+      ],
+      "TOMATO_EARLY_BLIGHT": [
+        17,
+        19
+      ],
+      "TOMATO_YELLOW_LEAF_CURL_VIRUS": [
+        8,
+        42
+      ]
+    }
+  },
+  "photos": {
+    "gt_leaves": 192,
+    "photos": 69,
+    "analysed": 63,
+    "uncertain": 1,
+    "answered": 62,
+    "binary_ok": 54,
+    "exact_ok": 18,
+    "majority_ok": 18,
+    "not_plant": 6
+  },
+  "ccmt": {
+    "healthy": {
+      "n": 46,
+      "answered": 45,
+      "binary_ok": 1,
+      "exact_n": 45,
+      "exact_ok": 1,
+      "whole_plant": 0,
+      "uncertain": 1
+    },
+    "leaf blight": {
+      "n": 128,
+      "answered": 124,
+      "binary_ok": 124,
+      "whole_plant": 0,
+      "uncertain": 4
+    },
+    "leaf curl": {
+      "n": 49,
+      "answered": 48,
+      "binary_ok": 48,
+      "exact_n": 48,
+      "exact_ok": 0,
+      "whole_plant": 0,
+      "uncertain": 1
+    },
+    "septoria leaf spot": {
+      "n": 273,
+      "answered": 254,
+      "binary_ok": 254,
+      "exact_n": 254,
+      "exact_ok": 57,
+      "whole_plant": 0,
+      "uncertain": 19
+    },
+    "verticulium wilt": {
+      "n": 75,
+      "answered": 70,
+      "binary_ok": 70,
+      "whole_plant": 0,
+      "uncertain": 4,
+      "rejected": 1
+    },
+    "total": {
+      "n": 571,
+      "answered": 541,
+      "binary_ok": 497,
+      "exact_n": 347,
+      "exact_ok": 58,
+      "whole_plant": 0,
+      "uncertain": 29,
+      "rejected": 1
+    }
+  }
+}

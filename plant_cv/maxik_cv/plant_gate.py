@@ -16,9 +16,10 @@ Two interchangeable models, auto-detected from the ONNX output shape:
 from dataclasses import dataclass
 from pathlib import Path
 
-import cv2
 import numpy as np
 import onnxruntime as ort
+
+from .preprocess import whole_frame_input
 
 # Indices into torchvision's ImageNet-1k category list (MobileNet_V2_Weights.IMAGENET1K_V2.meta["categories"]).
 PLANT_CLASS_IDS = [
@@ -27,9 +28,6 @@ PLANT_CLASS_IDS = [
     984, 985, 986, 987, 988, 989, 990,  # rapeseed, daisy, lady's slipper, corn, acorn, hip, buckeye
     991, 992, 993, 994, 995, 996, 997,  # coral fungus ... bolete (fungi, common in garden shots)
 ]
-
-IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 ZERO_SHOT_THRESHOLD = 0.10  # summed probability on plant-related ImageNet classes needed to pass
 TRAINED_THRESHOLD = 0.5     # softmax probability of the "plant" class needed to pass
@@ -56,14 +54,9 @@ class PlantGate:
         self.threshold = threshold if threshold is not None else (
             TRAINED_THRESHOLD if self.trained else ZERO_SHOT_THRESHOLD)
 
-    def _preprocess(self, bgr: np.ndarray) -> np.ndarray:
-        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        rgb = cv2.resize(rgb, (224, 224), interpolation=cv2.INTER_AREA).astype(np.float32) / 255.0
-        rgb = (rgb - IMAGENET_MEAN) / IMAGENET_STD
-        return rgb.transpose(2, 0, 1)[None].astype(np.float32)
-
     def check(self, bgr: np.ndarray) -> GateResult:
-        x = self._preprocess(bgr)
+        # Whole frame, exactly as scripts/train_plant_gate.py evaluates (torchvision Resize((224, 224))).
+        x = whole_frame_input(bgr, 224)
         logits = self.sess.run(None, {self.input_name: x})[0][0]
         probs = _softmax(logits)
         if self.trained:

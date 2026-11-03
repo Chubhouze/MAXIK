@@ -1,0 +1,36 @@
+{
+  "classes": [
+    "Tomato___Bacterial_spot",
+    "Tomato___Early_blight",
+    "Tomato___Late_blight",
+    "Tomato___Leaf_Mold",
+    "Tomato___Septoria_leaf_spot",
+    "Tomato___Spider_mites Two-spotted_spider_mite",
+    "Tomato___Target_Spot",
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+    "Tomato___Tomato_mosaic_virus",
+    "Tomato___healthy"
+  ],
+  "img_size": 224,
+  "temperature": 0.8999999761581421,
+  "test": {
+    "lab": {
+      "acc": 0.9896103739738464,
+      "n": 1540
+    },
+    "field_leaf": {
+      "acc": 0.6354166865348816,
+      "n": 192
+    },
+    "field_photo": {
+      "acc": 0.9538043737411499,
+      "n": 368
+    }
+  },
+  "test_acc": 0.9896103739738464,
+  "field_test_acc": {
+    "field_leaf": 0.6354166865348816,
+    "field_photo": 0.9538043737411499
+  },
+  "trained_on": "PlantVillage + PlantDoc (CC BY 4.0) + CCMT (CC BY 4.0)"
+}

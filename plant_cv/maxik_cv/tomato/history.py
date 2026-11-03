@@ -41,6 +41,19 @@ class TomatoHistory:
                     thumb BLOB
                 )""")
             c.execute("CREATE INDEX IF NOT EXISTS idx_point_ts ON tomato_inspections(point_id, ts)")
+            # one row per top-down bed frame the robot sends while driving along a bed
+            c.execute(
+                """CREATE TABLE IF NOT EXISTS bed_frames (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    bed_id TEXT NOT NULL,
+                    position REAL,
+                    ts TEXT NOT NULL,
+                    crops INTEGER, weeds INTEGER, damaged INTEGER,
+                    mean_damage REAL, weed_cover REAL,
+                    report TEXT NOT NULL,
+                    thumb BLOB
+                )""")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_bed ON bed_frames(bed_id, position, ts)")
 
     def _conn(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path, timeout=10)
@@ -111,6 +124,39 @@ class TomatoHistory:
     def thumb(self, inspection_id: int) -> bytes | None:
         with self._conn() as c:
             row = c.execute("SELECT thumb FROM tomato_inspections WHERE id=?", (inspection_id,)).fetchone()
+        return bytes(row["thumb"]) if row and row["thumb"] else None
+
+    # ---- bed frames ------------------------------------------------------------------------------
+    def add_bed_frame(self, bed_id: str, position: float | None, report: dict, bgr: np.ndarray) -> int:
+        h, w = bgr.shape[:2]
+        s = 320 / max(h, w)
+        ok, buf = cv2.imencode(".jpg", cv2.resize(bgr, (max(1, round(w * s)), max(1, round(h * s)))),
+                               [cv2.IMWRITE_JPEG_QUALITY, 80])
+        ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._conn() as c:
+            return c.execute(
+                "INSERT INTO bed_frames(bed_id, position, ts, crops, weeds, damaged, mean_damage, weed_cover, report, "
+                "thumb) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (bed_id, position, ts, report["crops"], report["weeds"], report["damagedCrops"],
+                 report["meanCropDamage"], report["weedCover"], json.dumps(report, ensure_ascii=False),
+                 buf.tobytes() if ok else None)).lastrowid
+
+    def bed_frames(self, bed_id: str) -> list[dict]:
+        with self._conn() as c:
+            rows = c.execute("SELECT id, position, ts, crops, weeds, damaged, mean_damage, weed_cover FROM bed_frames "
+                             "WHERE bed_id=? ORDER BY ts ASC, id ASC", (bed_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def beds(self) -> list[dict]:
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT bed_id, COUNT(*) AS frames, MAX(ts) AS last_ts, SUM(crops) AS crops, SUM(weeds) AS weeds, "
+                "SUM(damaged) AS damaged FROM bed_frames GROUP BY bed_id ORDER BY MAX(ts) DESC").fetchall()
+        return [dict(r) for r in rows]
+
+    def bed_thumb(self, frame_id: int) -> bytes | None:
+        with self._conn() as c:
+            row = c.execute("SELECT thumb FROM bed_frames WHERE id=?", (frame_id,)).fetchone()
         return bytes(row["thumb"]) if row and row["thumb"] else None
 
     def result(self, inspection_id: int) -> dict | None:

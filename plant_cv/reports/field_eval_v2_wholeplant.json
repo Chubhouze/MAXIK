@@ -1,0 +1,110 @@
+{
+  "model": "tomato_health.onnx",
+  "whole_plant": true,
+  "leaves": {
+    "n": 192,
+    "exact": 0.6354166666666666,
+    "binary": 0.9270833333333334,
+    "per_class": {
+      "TOMATO_LEAF_MOLD": [
+        4,
+        16
+      ],
+      "TOMATO_HEALTHY": [
+        20,
+        27
+      ],
+      "TOMATO_BACTERIAL_SPOT": [
+        7,
+        14
+      ],
+      "TOMATO_MOSAIC_VIRUS": [
+        19,
+        36
+      ],
+      "TOMATO_SEPTORIA_LEAF_SPOT": [
+        19,
+        24
+      ],
+      "TOMATO_LATE_BLIGHT": [
+        10,
+        14
+      ],
+      "TOMATO_EARLY_BLIGHT": [
+        11,
+        19
+      ],
+      "TOMATO_YELLOW_LEAF_CURL_VIRUS": [
+        32,
+        42
+      ]
+    }
+  },
+  "photos": {
+    "gt_leaves": 192,
+    "photos": 69,
+    "analysed": 67,
+    "uncertain": 6,
+    "answered": 61,
+    "binary_ok": 58,
+    "exact_ok": 44,
+    "majority_ok": 44,
+    "whole_plant_photos": 39,
+    "leaves_found": 110,
+    "leaf_diag_ok": 71,
+    "not_plant": 2
+  },
+  "ccmt": {
+    "healthy": {
+      "n": 46,
+      "answered": 45,
+      "binary_ok": 44,
+      "exact_n": 45,
+      "exact_ok": 44,
+      "whole_plant": 9,
+      "uncertain": 1
+    },
+    "leaf blight": {
+      "n": 128,
+      "answered": 123,
+      "binary_ok": 123,
+      "whole_plant": 11,
+      "uncertain": 5
+    },
+    "leaf curl": {
+      "n": 49,
+      "answered": 45,
+      "binary_ok": 44,
+      "exact_n": 45,
+      "exact_ok": 41,
+      "whole_plant": 18,
+      "uncertain": 4
+    },
+    "septoria leaf spot": {
+      "n": 273,
+      "answered": 273,
+      "binary_ok": 271,
+      "exact_n": 273,
+      "exact_ok": 267,
+      "whole_plant": 23
+    },
+    "verticulium wilt": {
+      "n": 75,
+      "answered": 71,
+      "binary_ok": 71,
+      "whole_plant": 10,
+      "rejected": 1,
+      "uncertain": 3
+    },
+    "total": {
+      "n": 571,
+      "answered": 557,
+      "binary_ok": 553,
+      "exact_n": 363,
+      "exact_ok": 352,
+      "whole_plant": 71,
+      "uncertain": 13,
+      "rejected": 1
+    }
+  }
+}

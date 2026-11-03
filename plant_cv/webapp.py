@@ -16,27 +16,44 @@ from flask import Flask, Response, jsonify, render_template_string, request
 
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
+from bed_ui import BED_PAGE, BEDS_PAGE, bed_context, beds_context
+from bed_ui import css as bed_css
+from bed_ui import overlay as bed_overlay
 from dashboard_ui import DASHBOARD_PAGE, POINT_PAGE, dashboard_context, point_context
 from maxik_cv.pipeline import PlantInspector
 from maxik_cv.segment import overlay, plant_mask
 from maxik_cv.tomato import OnnxTomatoHealthClassifier, PlantDetector, TomatoInspector
 from maxik_cv.tomato.history import TomatoHistory
-from maxik_cv.tomato.service import SENSOR_KEYS, analyze
+from maxik_cv.tomato.leaf_detector import LeafDetector
+from maxik_cv.tomato.species_classifier import OnnxSpeciesClassifier
+from maxik_cv.tomato.bed import analyze_bed
+from maxik_cv.tomato.service import SENSOR_KEYS, analyze, clean_sensors
 
 # Anchored to this file's own directory, not the process cwd: when launched via .claude/launch.json
 # the cwd is the MAXIK repo root, not plant_cv/, which previously made these relative paths silently
 # not exist -> PlantInspector swallows a missing model path and falls back to rules-only with no error.
 MODEL_PATH = BASE_DIR / "models_synthetic" / "plant_health.onnx"
 GATE_MODEL_PATH = BASE_DIR / "models_synthetic" / "plant_gate_trained.onnx"
-TOMATO_HEALTH_MODEL_PATH = BASE_DIR / "models_tomato" / "tomato_health.onnx"
+# The disease model trained on lab + real-world photos is preferred over the lab-only one when present.
+TOMATO_HEALTH_MODEL_PATH = next((p for p in (BASE_DIR / "models_tomato_field" / "tomato_health.onnx",
+                                             BASE_DIR / "models_tomato" / "tomato_health.onnx") if p.exists()),
+                                BASE_DIR / "models_tomato" / "tomato_health.onnx")
+LEAF_DETECTOR_PATH = BASE_DIR / "models_leaf" / "leaf_detector.onnx"      # optional: whole-plant mode
+SPECIES_MODEL_PATH = BASE_DIR / "models_species" / "species.onnx"         # optional: real crop check
+BED_DETECTOR_PATH = BASE_DIR / "models_bed" / "bed_detector.onnx"         # optional: top-down bed view
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # reject oversized uploads before decoding them
 inspector = PlantInspector(MODEL_PATH, gate_model_path=GATE_MODEL_PATH)
 tomato_health_classifier = (OnnxTomatoHealthClassifier(TOMATO_HEALTH_MODEL_PATH)
                              if TOMATO_HEALTH_MODEL_PATH.exists() else None)
-tomato_inspector = TomatoInspector(PlantDetector.from_model_path(GATE_MODEL_PATH),
-                                    health_classifier=tomato_health_classifier)
+tomato_inspector = TomatoInspector(
+    PlantDetector.from_model_path(GATE_MODEL_PATH),
+    species_classifier=OnnxSpeciesClassifier(SPECIES_MODEL_PATH) if SPECIES_MODEL_PATH.exists() else None,
+    health_classifier=tomato_health_classifier,
+    leaf_detector=LeafDetector(LEAF_DETECTOR_PATH) if LEAF_DETECTOR_PATH.exists() else None,
+)
+bed_detector = LeafDetector(BED_DETECTOR_PATH) if BED_DETECTOR_PATH.exists() else None
 # Inspection history. In a container the file system is lost on redeploy unless this path is on a volume.
 history = TomatoHistory(os.environ.get("MAXIK_DB_PATH", BASE_DIR / "inspections.db"))
 # Bundled sample photos (samples/*.jpg): label shown on the page -> file. The folder may be deleted.
@@ -49,8 +66,10 @@ def _inject_samples():
     return {"samples": SAMPLES}
 
 
-TOMATO_MODEL_TEST_ACC = (json.loads(TOMATO_HEALTH_MODEL_PATH.with_suffix(".json").read_text(encoding="utf8")).get("test_acc", 0.0)
-                         if TOMATO_HEALTH_MODEL_PATH.exists() else 0.0)
+_meta = (json.loads(TOMATO_HEALTH_MODEL_PATH.with_suffix(".json").read_text(encoding="utf8"))
+         if TOMATO_HEALTH_MODEL_PATH.exists() else {})
+TOMATO_MODEL_TEST_ACC = _meta.get("test_acc", 0.0)
+TOMATO_MODEL_FIELD_ACC = _meta.get("field_test_acc")  # {"field_leaf": .., "field_photo": ..} for the field model
 
 PAGE = """
 <!doctype html>
@@ -216,6 +235,13 @@ TOMATO_PAGE = """
             text-decoration: none; font-size: 0.9em; }
   .sample:hover { border-color: var(--ink); }
   .metric-label.wide { width: 190px; }
+  .scroll { overflow-x: auto; }
+  table.leaves { width: 100%; border-collapse: collapse; font-size: 0.88em; margin-top: 10px; }
+  table.leaves th { text-align: left; font-size: 0.75em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; }
+  table.leaves td { padding: 6px; border-top: 1px solid var(--line); }
+  table.leaves td.num { font-variant-numeric: tabular-nums; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; }
+  .dot.ok { background: var(--green); } .dot.bad { background: var(--red); } .dot.unsure { background: var(--amber); }
   .bar-fill.damage { background: #c62828; }
   .ctx { margin-top: 14px; } .ctx summary { color: var(--ink); }
   .ctx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
@@ -292,12 +318,29 @@ TOMATO_PAGE = """
     <div class="warn-box">{% for w in result.warnings %}<div>&#9888; {{ w }}</div>{% endfor %}</div>
     {% endif %}
 
+    {% if result.mode == "whole_plant" and result.leaves %}
+    <p class="section-label">Whole plant: {{ result.leaves|length }} leaves found and diagnosed one by one</p>
+    {% if leaves_b64 %}<img class="photo" src="data:image/jpeg;base64,{{ leaves_b64 }}">{% endif %}
+    <div class="scroll"><table class="leaves">
+      <tr><th>#</th><th>Leaf assessment</th><th>Confidence</th><th>Visible damage</th></tr>
+      {% for l in result.leaves %}
+      <tr><td>{{ loop.index }}</td>
+          <td><span class="dot {{ 'ok' if l.condition == 'TOMATO_HEALTHY' else ('unsure' if l.condition == 'TOMATO_UNCERTAIN' else 'bad') }}"></span>{{ l.label }}</td>
+          <td class="num">{{ '%.0f'|format(l.confidence*100) }}%</td>
+          <td class="num">{% if l.affectedFraction is not none %}{{ '%.0f'|format(l.affectedFraction*100) }}%{% else %}&ndash;{% endif %}</td></tr>
+      {% endfor %}
+    </table></div>
+    <p class="disclaimer">Leaves are found automatically by a detector trained on real-world plant photos;
+    hidden, overlapping or very small leaves may be missed. Plant severity is the worse of the visible damage
+    (area-weighted over the leaves) and the share of leaves with a problem.</p>
+    {% endif %}
+
     {% if result.candidates and result.candidates|length > 1 %}
-    <p class="section-label">What the model considered</p>
+    <p class="section-label">{% if result.mode == "whole_plant" %}Share of leaves per assessment{% else %}What the model considered{% endif %}</p>
     {% for c in result.candidates %}
     <div class="metric"><span class="metric-label wide">{{ c.label }}</span>
       <div class="bar"><div class="bar-fill vigour" style="width:{{ '%.0f'|format(c.probability*100) }}%"></div></div>
-      <span class="metric-value">{{ '%.0f'|format(c.probability*100) }}%</span></div>
+      <span class="metric-value">{% if c.leaves is defined %}{{ c.leaves }}{% else %}{{ '%.0f'|format(c.probability*100) }}%{% endif %}</span></div>
     {% endfor %}
     {% endif %}
 
@@ -371,7 +414,12 @@ TOMATO_PAGE = """
     this MVP, so real photos correctly land here by design — this demonstrates the pipeline
     wiring, not a finished diagnosis model.</div>
     {% endif %}
-    {% if result.plantDetected and not result.healthModelIsPlaceholder %}
+    {% if result.plantDetected and not result.healthModelIsPlaceholder and model_field_acc %}
+    <div class="placeholder-note">The disease model was trained on lab leaf photos (PlantVillage) and real-world
+    photos (PlantDoc, CCMT farm photos). Held-out accuracy: {{ '%.0f'|format(model_test_acc*100) }}% on lab photos,
+    {{ '%.0f'|format(model_field_acc.field_leaf*100) }}% on real-world leaves, {{ '%.0f'|format(model_field_acc.field_photo*100) }}%
+    on farm photos (3 of the 10 conditions exist in that set). It has not been validated on this robot's camera yet.</div>
+    {% elif result.plantDetected and not result.healthModelIsPlaceholder %}
     <div class="placeholder-note">The disease model was trained on PlantVillage (public, lab-condition
     leaf photos) and scored {{ '%.1f'|format(model_test_acc*100) }}% on a held-out, de-duplicated split of that same
     dataset. That is not a field accuracy: it has not yet been validated on independently captured or
@@ -458,6 +506,27 @@ def _lesion_overlay_b64(img: np.ndarray, lesion) -> str:
     return _to_b64(vis)
 
 
+_LEAF_COLOURS = {"TOMATO_HEALTHY": (60, 160, 46), "TOMATO_UNCERTAIN": (10, 98, 184)}  # BGR; anything else = red
+
+
+def _leaves_overlay_b64(img: np.ndarray, leaves: list[dict]) -> str:
+    """Whole-plant mode: each analysed leaf boxed and numbered (green healthy, red problem, amber unsure)."""
+    if not leaves:
+        return ""
+    s = min(1.0, 900 / max(img.shape[:2]))
+    vis = cv2.resize(img, (round(img.shape[1] * s), round(img.shape[0] * s)), interpolation=cv2.INTER_AREA)
+    thick = max(2, round(max(vis.shape[:2]) / 300))
+    for i, leaf in enumerate(leaves, 1):
+        x0, y0, x1, y1 = (round(v * s) for v in leaf["box"])
+        colour = _LEAF_COLOURS.get(leaf["condition"], (40, 40, 198))
+        cv2.rectangle(vis, (x0, y0), (x1, y1), colour, thick)
+        label = str(i)
+        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+        cv2.rectangle(vis, (x0, y0), (x0 + tw + 8, y0 + th + 8), colour, -1)
+        cv2.putText(vis, label, (x0 + 4, y0 + th + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    return _to_b64(vis)
+
+
 @app.route("/tomato", methods=["GET", "POST"])
 def tomato():
     if request.method != "POST":
@@ -478,6 +547,7 @@ def _render_tomato(img: np.ndarray, point: str | None, sensors: dict):
     return render_template_string(
         TOMATO_PAGE, result=result, orig_b64=_to_b64(img), overlay_b64=_lesion_overlay_b64(img, analysis.lesion),
         result_json=json.dumps(result, indent=2, ensure_ascii=False), model_test_acc=TOMATO_MODEL_TEST_ACC,
+        model_field_acc=TOMATO_MODEL_FIELD_ACC, leaves_b64=_leaves_overlay_b64(img, result.get("leaves", [])),
     )
 
 
@@ -514,6 +584,61 @@ def thumb(inspection_id):
     return Response(data, mimetype="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
 
+def _bed_context() -> tuple[str | None, float | None, dict, str | None]:
+    """(bed_id, position_cm, sensors, error) from query/form, like _request_context for points."""
+    bed = (request.values.get("bed") or "").strip()
+    if bed and not _POINT_RE.match(bed):
+        return None, None, {}, "bed ID may only contain letters, digits and _ . : - (max 64 characters)"
+    try:
+        pos = float(request.values["position"]) if request.values.get("position") else None
+    except ValueError:
+        return None, None, {}, "position must be a number (cm along the bed)"
+    return bed or None, pos, {k: request.values.get(k) for k in SENSOR_KEYS}, None
+
+
+def _analyze_bed(img: np.ndarray, bed: str | None, pos: float | None, sensors: dict) -> dict:
+    report = analyze_bed(img, bed_detector, clean_sensors(sensors)).to_dict()
+    report.update({"bed": bed, "position": pos, "frameId": None})
+    if bed:
+        report["frameId"] = history.add_bed_frame(bed, pos, report, img)
+    return report
+
+
+@app.route("/bed", methods=["GET", "POST"])
+def bed_page():
+    if request.method != "POST" or bed_detector is None:
+        return render_template_string(BED_PAGE, css=bed_css(), report=None, detector_ready=bed_detector is not None)
+    bed, pos, sensors, error = _bed_context()
+    if error:
+        return error, 400
+    img = cv2.imdecode(np.frombuffer(request.files["photo"].read(), np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        return render_template_string(BED_PAGE, css=bed_css(), report=None, detector_ready=True)
+    report = _analyze_bed(img, bed, pos, sensors)
+    return render_template_string(BED_PAGE, css=bed_css(), report=report, detector_ready=True,
+                                  overlay_b64=_to_b64(bed_overlay(img, report)))
+
+
+@app.route("/beds")
+def beds_page():
+    return render_template_string(BEDS_PAGE, **beds_context(history.beds()))
+
+
+@app.route("/beds/<bed_id>")
+def bed_detail(bed_id):
+    frames = history.bed_frames(bed_id) if _POINT_RE.match(bed_id) else []
+    if not frames:
+        return "unknown bed", 404
+    return render_template_string(BEDS_PAGE, **bed_context(bed_id, frames))
+
+
+@app.route("/bedthumb/<int:frame_id>.jpg")
+def bed_thumb(frame_id):
+    data = history.bed_thumb(frame_id)
+    return (Response(data, mimetype="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+            if data else ("not found", 404))
+
+
 def _api_authorized() -> bool:
     expected = os.environ.get("MAXIK_API_TOKEN")
     if not expected:  # no token configured -> open (fine for localhost/LAN testing, not for a public URL)
@@ -543,6 +668,25 @@ def api_tomato():
         return jsonify(error="could not decode image"), 400
     analysis, inspection_id = analyze(tomato_inspector, history, img, point, sensors)
     return jsonify({**analysis.to_dict(), "inspectionId": inspection_id})
+
+
+@app.route("/api/bed", methods=["POST"])
+def api_bed():
+    """Robot endpoint for the top-down bed camera: one frame -> every plant (crop/weed) with its visible
+    damage, as JSON. Query: bed (ID; the frame is saved to that bed's pass), position (cm along the bed),
+    soil_moisture / temperature / humidity. Body: JPEG or form field "photo"."""
+    if not _api_authorized():
+        return jsonify(error="unauthorized"), 401
+    if bed_detector is None:
+        return jsonify(error="no bed detector model on this server (models_bed/bed_detector.onnx)"), 503
+    bed, pos, sensors, error = _bed_context()
+    if error:
+        return jsonify(error=error), 400
+    raw = request.files["photo"].read() if "photo" in request.files else request.get_data()
+    img = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR) if raw else None
+    if img is None:
+        return jsonify(error="could not decode image"), 400
+    return jsonify(_analyze_bed(img, bed, pos, sensors))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,21 @@
+{
+  "classes": [
+    "leaf"
+  ],
+  "min_size": 512,
+  "max_size": 853,
+  "score_threshold": 0.5,
+  "val": {
+    "ap50": 0.7170383027092235,
+    "recall": 0.6821983273596177,
+    "precision": 0.7255400254129606,
+    "gt": 837
+  },
+  "test": {
+    "ap50": 0.9049695034518602,
+    "recall": 0.8517699115044248,
+    "precision": 0.873015873015873,
+    "gt": 452
+  },
+  "trained_on": "PlantDoc object detection, 13 crops (CC BY 4.0)"
+}

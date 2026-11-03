@@ -4,3 +4,4 @@ waitress>=3.0
 numpy>=1.26
 opencv-python-headless>=4.9
 onnxruntime>=1.18
+pillow>=10

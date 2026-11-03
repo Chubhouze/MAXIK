@@ -22,6 +22,7 @@ from .recommendations import get_recommendation
 from .schema import AnalysisResult, Condition, ImageQualityIssue, QualityReport, Severity
 from .severity import estimate_severity
 from .species_classifier import PlaceholderSpeciesClassifier, PlantSpeciesClassifier
+from .whole_plant import analyze_leaves, summarize
 
 _QUALITY_MESSAGES = {
     ImageQualityIssue.IMAGE_TOO_DARK: "Image is too dark for reliable analysis. Please retake it in better lighting.",
@@ -35,10 +36,14 @@ _QUALITY_MESSAGES = {
 class TomatoInspector:
     def __init__(self, plant_detector: PlantDetector,
                  species_classifier: PlantSpeciesClassifier | None = None,
-                 health_classifier: TomatoHealthClassifier | None = None):
+                 health_classifier: TomatoHealthClassifier | None = None,
+                 leaf_detector=None, min_leaves: int = 2):
         self.plant_detector = plant_detector
         self.species_classifier = species_classifier or PlaceholderSpeciesClassifier()
         self.health_classifier = health_classifier or PlaceholderTomatoHealthClassifier()
+        # Optional: with a LeafDetector, photos showing >= min_leaves leaves are analysed leaf by leaf.
+        self.leaf_detector = leaf_detector
+        self.min_leaves = min_leaves
 
     def inspect(self, bgr: np.ndarray, sensors: dict | None = None) -> AnalysisResult:
         quality = analyze_basic_quality(bgr)
@@ -65,22 +70,35 @@ class TomatoInspector:
 
         species = self.species_classifier.classify(bgr)
         if species.species != "tomato":
+            crop = (species.species or "unknown").capitalize()
+            note = [f"The plant looks like {crop.lower()} ({species.confidence:.0%}). Only tomato is analysed "
+                    "in this version."] if species.confidence is not None else []
             return self._result(
                 condition=Condition.UNSUPPORTED_PLANT, quality=quality,
-                plant_detected=True, plant_type="Unknown / Unsupported", plant_confidence=species.confidence,
+                plant_detected=True, plant_type=f"{crop} (not supported)", plant_confidence=species.confidence,
                 condition_confidence=None, observed_features=[], severity=Severity.UNKNOWN,
-                color_stats=stats.to_dict(), possible_causes=causes,
+                color_stats=stats.to_dict(), possible_causes=causes, warnings=note,
             )
+
+        soft_warning = ["The photo is slightly soft. Blur can make the classifier confidently wrong, "
+                        "so treat this result with extra caution or retake the photo."] \
+            if quality.sharpness < SHARPNESS_SOFT else []
+        if not species.is_placeholder and species.confidence is not None and species.confidence < 0.5 and species.ranked:
+            top, p_top = species.ranked[0]
+            soft_warning.append(f"Not sure this is a tomato plant (tomato {species.confidence:.0%}, most likely "
+                                f"{top} {p_top:.0%}). The result below assumes it is a tomato.")
+
+        if self.leaf_detector is not None:
+            leaves = self.leaf_detector.detect(bgr)
+            if len(leaves) >= self.min_leaves:
+                return self._whole_plant(bgr, leaves, quality, species, stats, causes, soft_warning)
 
         health = self.health_classifier.classify(bgr)
         condition = apply_confidence_gate(health.condition, health.confidence)
         lesion = analyze_affected_area(bgr)
         severity = estimate_severity(condition, lesion.fraction)
 
-        warnings = _cross_checks(health, condition, severity, lesion.fraction)
-        if quality.sharpness < SHARPNESS_SOFT:
-            warnings.append("The photo is slightly soft. Blur can make the classifier confidently wrong, "
-                            "so treat this result with extra caution or retake the photo.")
+        warnings = _cross_checks(health, condition, severity, lesion.fraction) + soft_warning
         candidates = [{"condition": c.value, "label": CONDITION_TO_STATUS_LABEL[c], "probability": round(p, 4)}
                       for c, p in health.ranked]
 
@@ -92,6 +110,24 @@ class TomatoInspector:
             health_model_is_placeholder=health.is_placeholder,
             affected_fraction=lesion.fraction, warnings=warnings, candidates=candidates, lesion=lesion,
         )
+
+    def _whole_plant(self, bgr, leaves, quality, species, stats, causes, soft_warning) -> AnalysisResult:
+        results, detected_total = analyze_leaves(bgr, leaves, self.health_classifier)
+        if not results:  # every detection was too small to diagnose
+            leaves_note = [f"{len(leaves)} leaves were found but all are too small to diagnose; move closer."]
+            return self._result(
+                condition=Condition.TOMATO_UNCERTAIN, quality=quality, plant_detected=True, plant_type="Tomato",
+                plant_confidence=species.confidence, condition_confidence=None, observed_features=[],
+                severity=Severity.UNKNOWN, color_stats=stats.to_dict(), possible_causes=causes,
+                warnings=leaves_note + soft_warning, mode="whole_plant")
+        plant = summarize(results, detected_total)
+        return self._result(
+            condition=plant.condition, quality=quality, plant_detected=True, plant_type="Tomato",
+            plant_confidence=species.confidence, condition_confidence=plant.confidence,
+            observed_features=plant.observed, severity=plant.severity, color_stats=stats.to_dict(),
+            possible_causes=causes, health_model_is_placeholder=results[0].is_placeholder,
+            affected_fraction=plant.affected_fraction, warnings=plant.warnings + soft_warning,
+            candidates=plant.candidates, mode="whole_plant", leaves=[r.to_dict() for r in results])
 
     def _quality_failure(self, quality: QualityReport, plant_detected: bool | None = None) -> AnalysisResult:
         message = " ".join(_QUALITY_MESSAGES[i] for i in quality.issues)
@@ -110,7 +146,7 @@ class TomatoInspector:
                 possible_causes: list[dict] | None = None,
                 health_model_is_placeholder: bool = False, affected_fraction: float | None = None,
                 warnings: list[str] | None = None, candidates: list[dict] | None = None,
-                lesion=None) -> AnalysisResult:
+                lesion=None, mode: str = "single_leaf", leaves: list[dict] | None = None) -> AnalysisResult:
         status_label, message, recommendations = get_recommendation(condition, condition_confidence)
         return AnalysisResult(
             plant_detected=plant_detected, plant_type=plant_type, plant_confidence=plant_confidence,
@@ -121,7 +157,7 @@ class TomatoInspector:
             color_stats=color_stats, possible_causes=possible_causes or [],
             health_model_is_placeholder=health_model_is_placeholder,
             affected_fraction=affected_fraction, warnings=warnings or [], candidates=candidates or [],
-            lesion=lesion,
+            lesion=lesion, mode=mode, leaves=leaves or [],
         )
 
 

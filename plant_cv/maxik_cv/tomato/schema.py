@@ -63,6 +63,7 @@ class SpeciesPrediction:
     species: str | None          # e.g. "tomato", or None if undetermined
     confidence: float | None     # None when the classifier is a placeholder (no real estimate)
     is_placeholder: bool = False
+    ranked: list[tuple[str, float]] = field(default_factory=list)  # top crop guesses, best first
 
 
 @dataclass
@@ -99,6 +100,8 @@ class AnalysisResult:
     sensors: dict = field(default_factory=dict)  # robot sensor readings that came with the photo
     point_id: str | None = None                # which plant/point of the route this inspection belongs to
     summary: str = ""                          # one-paragraph plain-language result (recommendations.build_summary)
+    mode: str = "single_leaf"                  # "single_leaf" (whole photo = one leaf) or "whole_plant" (per-leaf)
+    leaves: list[dict] = field(default_factory=list)  # whole_plant: one entry per detected leaf
     lesion: object | None = field(default=None, repr=False, compare=False)  # masks for drawing, not serialized
 
     def to_dict(self) -> dict:
@@ -131,4 +134,6 @@ class AnalysisResult:
             "sensors": self.sensors,
             "pointId": self.point_id,
             "summary": self.summary,
+            "mode": self.mode,
+            "leaves": self.leaves,
         }
