@@ -6,6 +6,8 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
+# Package layout: install.sh next to maxik_cv/. Repository layout (git clone): plant_cv/pi/install.sh.
+if [ ! -d "$DIR/maxik_cv" ] && [ -d "$DIR/../maxik_cv" ]; then DIR="$(cd "$DIR/.." && pwd)"; fi
 WITH_SERVER=0
 for arg in "$@"; do
   case "$arg" in
