@@ -25,19 +25,33 @@ OUTBOX = Path("outbox")
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def build_local_inspector():
+    """The same models as the server (webapp.py): field-trained disease model if present, plus the optional
+    crop check and leaf detector (whole-plant mode)."""
+    sys.path.insert(0, str(ROOT))
+    from maxik_cv.tomato import OnnxTomatoHealthClassifier, PlantDetector, TomatoInspector
+    from maxik_cv.tomato.leaf_detector import LeafDetector
+    from maxik_cv.tomato.species_classifier import OnnxSpeciesClassifier
+
+    gate = ROOT / "models_synthetic" / "plant_gate_trained.onnx"
+    health = next((p for p in (ROOT / "models_tomato_field" / "tomato_health.onnx",
+                               ROOT / "models_tomato" / "tomato_health.onnx") if p.exists()), None)
+    if not gate.exists() or health is None:
+        sys.exit(f"local analysis needs {gate} and models_tomato_field/tomato_health.onnx")
+    species, leaves = ROOT / "models_species" / "species.onnx", ROOT / "models_leaf" / "leaf_detector.onnx"
+    return TomatoInspector(PlantDetector.from_model_path(gate),
+                           species_classifier=OnnxSpeciesClassifier(species) if species.exists() else None,
+                           health_classifier=OnnxTomatoHealthClassifier(health),
+                           leaf_detector=LeafDetector(leaves) if leaves.exists() else None)
+
+
 def analyze_locally(frame, point: str | None, sensors: dict) -> dict:
     """Run the whole pipeline on the robot itself (ONNX Runtime on CPU, no network). History goes to
     robot_history.db next to the code, so trends still work offline."""
-    sys.path.insert(0, str(ROOT))
-    from maxik_cv.tomato import OnnxTomatoHealthClassifier, PlantDetector, TomatoInspector
+    inspector = build_local_inspector()  # also puts the package on sys.path
     from maxik_cv.tomato.history import TomatoHistory
     from maxik_cv.tomato.service import analyze
 
-    gate = ROOT / "models_synthetic" / "plant_gate_trained.onnx"
-    health = ROOT / "models_tomato" / "tomato_health.onnx"
-    if not gate.exists() or not health.exists():
-        sys.exit(f"local analysis needs {gate} and {health}")
-    inspector = TomatoInspector(PlantDetector.from_model_path(gate), health_classifier=OnnxTomatoHealthClassifier(health))
     result, inspection_id = analyze(inspector, TomatoHistory(ROOT / "robot_history.db"), frame, point, sensors)
     return {**result.to_dict(), "inspectionId": inspection_id, "analyzedOn": "robot"}
 

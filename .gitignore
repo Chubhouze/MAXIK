@@ -18,6 +18,7 @@ plant_cv/categories.txt
 plant_cv/reports/demo/
 plant_cv/reports/_*
 plant_cv/models_tomato_field/run1_*/
+plant_cv/dist/
 
 # Runtime state: inspection history, queued photos
 *.db

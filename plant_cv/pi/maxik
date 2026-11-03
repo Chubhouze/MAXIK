@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# M.A.X.I.K. on the robot. Settings: robot.conf in the install folder.
+#   maxik camera                    test shot -> camera_test.jpg
+#   maxik photo [--point ID] [...]  photograph one plant and analyse it (where: MAXIK_MODE in robot.conf)
+#   maxik photo --file leaf.jpg     analyse an existing photo instead
+#   maxik patrol --bed ID [--step CM --frames N | --position-file F]   pass along a bed, camera looking down
+#   maxik resend                    upload photos queued while the server was unreachable
+#   maxik selftest                  check the models on the bundled sample photos
+#   maxik server                    serve the web page from this Pi (port MAXIK_PORT, default 5055)
+# Extra options are passed on to scripts/send_to_server.py and scripts/patrol_bed.py (see their --help).
+set -euo pipefail
+
+DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+PY="$DIR/.venv/bin/python"
+if [ -f "$DIR/robot.conf" ]; then
+  set -a; . "$DIR/robot.conf"; set +a
+fi
+cd "$DIR"  # outbox/ and robot_history.db stay next to the code
+
+MODE="${MAXIK_MODE:-local}"
+server_args=()
+need_server() {
+  if [ -z "${MAXIK_URL:-}" ]; then
+    echo "Set MAXIK_URL in $DIR/robot.conf (or MAXIK_MODE=local to analyse on the Pi)." >&2
+    exit 1
+  fi
+  server_args=(--url "$MAXIK_URL")
+  if [ -n "${MAXIK_TOKEN:-}" ]; then server_args+=(--token "$MAXIK_TOKEN"); fi
+}
+
+cmd="${1:-help}"
+[ $# -gt 0 ] && shift
+case "$cmd" in
+  camera)
+    exec "$PY" -c "import sys; sys.path.insert(0, 'scripts'); import cv2; from send_to_server import capture_frame
+f = capture_frame(); cv2.imwrite('camera_test.jpg', f); print('saved', 'camera_test.jpg', f.shape[1], 'x', f.shape[0])" ;;
+  photo)
+    case "$MODE" in
+      local) exec "$PY" scripts/send_to_server.py --local "$@" ;;
+      server) need_server; exec "$PY" scripts/send_to_server.py "${server_args[@]}" "$@" ;;
+      fallback) need_server; exec "$PY" scripts/send_to_server.py "${server_args[@]}" --fallback-local "$@" ;;
+      *) echo "MAXIK_MODE must be local, server or fallback (robot.conf)" >&2; exit 1 ;;
+    esac ;;
+  patrol)
+    if [ "$MODE" = local ]; then
+      exec "$PY" scripts/patrol_bed.py --local "$@"
+    fi
+    need_server; exec "$PY" scripts/patrol_bed.py "${server_args[@]}" "$@" ;;
+  resend)
+    need_server; exec "$PY" scripts/send_to_server.py "${server_args[@]}" --resend ;;
+  selftest)
+    exec "$PY" scripts/selftest.py ;;
+  server)
+    exec "$DIR/.venv/bin/waitress-serve" --host=0.0.0.0 --port="${MAXIK_PORT:-5055}" --threads=2 webapp:app ;;
+  help|-h|--help)
+    sed -n '2,10p' "$(readlink -f "$0")" | sed 's/^# \{0,1\}//' ;;
+  *)
+    echo "unknown command: $cmd (see: maxik help)" >&2; exit 2 ;;
+esac

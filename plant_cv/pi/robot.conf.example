@@ -1,0 +1,17 @@
+# M.A.X.I.K. robot settings, read by the `maxik` command and the web-page service. KEY=value, no spaces.
+
+# Where photos are analysed:
+#   local    - on this Pi, no network needed (slower; whole-plant and bed detectors take seconds per frame)
+#   server   - sent to the analysis server at MAXIK_URL
+#   fallback - the server when reachable, otherwise on the Pi (the photo is also queued: maxik resend)
+MAXIK_MODE=local
+MAXIK_URL=
+# Token of the analysis server, if it was started with MAXIK_API_TOKEN
+MAXIK_TOKEN=
+
+# Only for the web page served from this Pi (./install.sh --server or maxik server):
+MAXIK_PORT=5055
+# Login for the browser pages (any user name); empty = no login
+MAXIK_UI_PASSWORD=
+# Token the robot API on this Pi requires; empty = open (fine inside your own network)
+MAXIK_API_TOKEN=

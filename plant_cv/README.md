@@ -44,7 +44,11 @@ python webapp.py                                   # http://127.0.0.1:5055/tomat
 MAXIK_HOST=0.0.0.0 MAXIK_API_TOKEN=... python webapp.py     # чтобы робот в той же сети мог достучаться
 ```
 
-На роботе (Raspberry Pi), `scripts/send_to_server.py`:
+**Установочный пакет для Raspberry Pi:** `python scripts/build_pi_package.py` собирает `dist/MAXIK-pi-<дата>.tar.gz`
+(код, модели, установщик, без обучающих скриптов). На Pi: `tar xzf MAXIK-pi-*.tar.gz && cd maxik && ./install.sh`,
+затем команда `maxik` (`camera`, `photo`, `patrol`, `selftest`, …). Подробно — [pi/README.md](pi/README.md).
+
+Под капотом команда `maxik` вызывает `scripts/send_to_server.py`:
 
 ```bash
 python3 scripts/send_to_server.py --url http://СЕРВЕР:5055 --token ... --point ряд1-куст3 --soil 0.4 --temp 24 --humidity 0.6

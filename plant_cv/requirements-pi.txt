@@ -1,5 +1,3 @@
-# Raspberry Pi 4 (64-bit Raspberry Pi OS). picamera2 comes from apt: sudo apt install python3-picamera2
-opencv-python-headless
-numpy
-onnxruntime
-pillow
+# Raspberry Pi (64-bit Raspberry Pi OS). pi/install.sh installs numpy, OpenCV, Pillow and picamera2 from apt
+# (built for the Pi, matching picamera2) and only this from pip:
+onnxruntime>=1.16
